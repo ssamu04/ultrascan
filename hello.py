@@ -14,74 +14,69 @@ preprocess_input = sm.get_preprocessing(BACKBONE)
 SIZE_X = 256
 SIZE_Y = 256
 
-# train_images = []
-# for directory_path in glob.glob("training_set"):
-#     for img_path in glob.glob(os.path.join(directory_path, "*_HC.png")):
-#         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-#         img = cv2.resize(img, (SIZE_Y, SIZE_X))
-#         train_images.append(img)     
-# train_images = np.array(train_images)
-
-# train_masks = []
-# for directory_path in glob.glob("training_set"):
-#     for img_path in glob.glob(os.path.join(directory_path, "*_HC_Annotation.png")):
-#         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-#         img = cv2.resize(img, (SIZE_Y, SIZE_X))
-#         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#         train_masks.append(img)      
-# train_masks = np.array(train_masks)
-
 train_images = []
 train_masks = []
 
 image_paths = sorted(glob.glob("training_set/*_HC.png"))
+# image_paths = sorted(glob.glob("training-set/*.png"))
 for img_path in image_paths:
+    print(img_path)
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
     img = cv2.resize(img, (SIZE_Y, SIZE_X))
+    #img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     train_images.append(img)
 
 mask_paths = sorted(glob.glob("training_set/*_HC_Annotation.png"))
+# mask_paths = sorted(glob.glob("training-groundtruth/*.png"))
 for img_path in mask_paths:
+    print(img_path)
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
     img = cv2.resize(img, (SIZE_Y, SIZE_X))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     train_masks.append(img)
-
-# Display the first 10 images and masks
-num_images_to_display = 10
-fig, axes = plt.subplots(num_images_to_display, 2, figsize=(15, 6))
-for i in range(num_images_to_display):
-    axes[i, 0].imshow(train_images[i+50])
-    axes[i, 0].axis('off')
-    axes[i, 1].imshow(train_masks[i+50])
-    axes[i, 1].axis('off')
-plt.tight_layout()
-plt.show()
-
 
 train_images = np.array(train_images)
 train_masks = np.array(train_masks)
 
 X = train_images.astype('float32')
-Y = train_masks.astype('float32')
-Y = np.expand_dims(Y, axis=-1)
+Y = (train_masks > 0.5).astype('float32')
+Y = Y[:, :, :, 0]
+
+#print statements for debugging
+print("X shape:",X.shape)
+print("Y shape:",Y.shape)
+
+unique_values = np.unique(Y)
+print("Unique values in train_masks:", unique_values)
+# Verify if the masks are binary
+if set(unique_values).issubset({0.0, 1.0}):
+    print("train_masks are binary.")
+else:
+    print("train_masks are not binary.")
+
+# still need to display images
+# # Display input image
+# plt.subplot(1, 2, 1)
+# plt.imshow(X[0])
+# plt.title('Input Image')
+# # Display binary mask
+# plt.subplot(1, 2, 2)
+# plt.imshow(Y[0][:, :, 0], cmap='gray')  # Only display the first channel
+# plt.title('Binary Mask')
+# plt.show()
 
 from sklearn.model_selection import train_test_split
 x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=0.2, random_state=42)
 
 # preprocess input
-x_train = preprocess_input(x_train)
-x_val = preprocess_input(x_val)
-
+x_train = preprocess_input(x_train) / 255.0
+x_val = preprocess_input(x_val) / 255.0
 
 # define model
 model = sm.Linknet(BACKBONE, encoder_weights='imagenet')
-model.compile('Adam', loss=sm.losses.bce_jaccard_loss, metrics=[sm.metrics.iou_score])
+model.compile('Adam', loss=sm.losses.binary_crossentropy , metrics=[sm.metrics.iou_score])
 
 #print(model.summary())
-
-print("X1 shape:",x_train.shape)
-print("Y1 shape:",y_train.shape)
 
 history=model.fit(x_train,
             y_train,
@@ -90,8 +85,6 @@ history=model.fit(x_train,
             verbose=1,
             validation_data=(x_val, y_val))
 
-
-# #accuracy = model.evaluate(x_val, y_val)
 #plot the training and validation accuracy and loss at each epoch
 loss = history.history['loss']
 val_loss = history.history['val_loss']
