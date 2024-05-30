@@ -11,25 +11,23 @@ from matplotlib import pyplot as plt
 BACKBONE = 'resnet34'
 preprocess_input = sm.get_preprocessing(BACKBONE)
 
-SIZE_X = 256
-SIZE_Y = 256
+SIZE_X = 768
+SIZE_Y = 512
 
 train_images = []
 train_masks = []
 
 image_paths = sorted(glob.glob("training_set/*_HC.png"))
-# image_paths = sorted(glob.glob("training-set/*.png"))
 for img_path in image_paths:
-    print(img_path)
+    # print(img_path)
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
     img = cv2.resize(img, (SIZE_Y, SIZE_X))
     #img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     train_images.append(img)
 
 mask_paths = sorted(glob.glob("training_set/*_HC_Annotation.png"))
-# mask_paths = sorted(glob.glob("training-groundtruth/*.png"))
 for img_path in mask_paths:
-    print(img_path)
+    # print(img_path)
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
     img = cv2.resize(img, (SIZE_Y, SIZE_X))
     # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -42,27 +40,33 @@ X = train_images.astype('float32')
 Y = (train_masks > 0.5).astype('float32')
 Y = Y[:, :, :, 0]
 
-#print statements for debugging
-print("X shape:",X.shape)
-print("Y shape:",Y.shape)
+# #print statements for debugging
+# print("X shape:",X.shape)
+# print("Y shape:",Y.shape)
 
-unique_values = np.unique(Y)
-print("Unique values in train_masks:", unique_values)
-# Verify if the masks are binary
-if set(unique_values).issubset({0.0, 1.0}):
-    print("train_masks are binary.")
-else:
-    print("train_masks are not binary.")
+# unique_values = np.unique(Y)
+# print("Unique values in train_masks:", unique_values)
+# # Verify if the masks are binary
+# if set(unique_values).issubset({0.0, 1.0}):
+#     print("train_masks are binary.")
+# else:
+#     print("train_masks are not binary.")
 
-# still need to display images
-# # Display input image
-# plt.subplot(1, 2, 1)
-# plt.imshow(X[0])
-# plt.title('Input Image')
-# # Display binary mask
-# plt.subplot(1, 2, 2)
-# plt.imshow(Y[0][:, :, 0], cmap='gray')  # Only display the first channel
-# plt.title('Binary Mask')
+# #used to show images
+# num_images = 5
+# plt.figure(figsize=(10, 5))
+# for i in range(num_images):
+#     # Display image
+#     plt.subplot(2, num_images, i + 1)
+#     plt.imshow(X[i] / 255.0)  # Scale the image to [0, 1] for display
+#     plt.title(f"Image {i+1}")
+#     plt.axis('off')
+
+#     # Display corresponding mask
+#     plt.subplot(2, num_images, i + 1 + num_images)
+#     plt.imshow(Y[i], cmap='gray')
+#     plt.title(f"Mask {i+1}")
+#     plt.axis('off')
 # plt.show()
 
 from sklearn.model_selection import train_test_split
@@ -74,7 +78,7 @@ x_val = preprocess_input(x_val) / 255.0
 
 # define model
 model = sm.Linknet(BACKBONE, encoder_weights='imagenet')
-model.compile('Adam', loss=sm.losses.binary_crossentropy , metrics=[sm.metrics.iou_score])
+model.compile('Adam', loss=sm.losses.bce_jaccard_loss, metrics=[sm.metrics.iou_score])
 
 #print(model.summary())
 
@@ -85,7 +89,7 @@ history=model.fit(x_train,
             verbose=1,
             validation_data=(x_val, y_val))
 
-#plot the training and validation accuracy and loss at each epoch
+#plot the training and validation loss at each epoch
 loss = history.history['loss']
 val_loss = history.history['val_loss']
 epochs = range(1, len(loss) + 1)
