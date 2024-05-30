@@ -73,8 +73,8 @@ from sklearn.model_selection import train_test_split
 x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=0.2, random_state=42)
 
 # preprocess input
-x_train = preprocess_input(x_train) / 255.0
-x_val = preprocess_input(x_val) / 255.0
+x_train = preprocess_input(x_train)
+x_val = preprocess_input(x_val)
 
 # define model
 model = sm.Linknet(BACKBONE, encoder_weights='imagenet')
@@ -101,23 +101,22 @@ plt.ylabel('Loss')
 plt.legend()
 plt.show()
 
-#model.save('membrane.h5')
+model.save('membrane.h5')
 
 
-# from tensorflow import keras
-# model = keras.models.load_model('membrane.h5', compile=False)
-# #Test on a different image
-# #READ EXTERNAL IMAGE...
-# test_img = cv2.imread('membrane/test/0.png', cv2.IMREAD_COLOR)       
-# test_img = cv2.resize(test_img, (SIZE_Y, SIZE_X))
-# test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
-# test_img = np.expand_dims(test_img, axis=0)
+from tensorflow import keras
+model = keras.models.load_model('membrane.h5', compile=False)
+#Test on a different image
+test_img = cv2.imread('test_set/00_HC.png', cv2.IMREAD_COLOR)       
+test_img = cv2.resize(test_img, (SIZE_Y, SIZE_X))
+test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+test_img = np.expand_dims(test_img, axis=0)
 
-# prediction = model.predict(test_img)
+prediction = model.predict(test_img)
 
-# #View and Save segmented image
-# prediction_image = prediction.reshape(mask.shape)
-# plt.imshow(prediction_image, cmap='gray')
-# plt.imsave('membrane/test0_segmented.jpg', prediction_image, cmap='gray')
+#View and Save segmented image
+prediction_image = prediction.reshape(img.shape)
+plt.imshow(prediction_image, cmap='gray')
+plt.imsave('save/test0_segmented.jpg', prediction_image, cmap='gray')
 
 
